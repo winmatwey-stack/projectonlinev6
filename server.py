@@ -1,0 +1,813 @@
+import os
+import json
+import bcrypt
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+from datetime import datetime
+
+app = Flask(__name__, static_folder='.')
+CORS(app)
+
+USERS_FILE = "users.json"
+NOTES_FILE = "materials.json"
+NEWS_FILE = "news.json"
+GUIDES_FILE = "guides.json"
+SETTINGS_FILE = "settings.json"
+RESULTS_FILE = "results.json"
+TESTS_FILE = "tests.json"
+CLASSES_FILE = "classes.json"
+CALENDAR_FILE = "calendar.json"
+STUDENT_CLASSES_FILE = "student_classes.json"
+
+
+def load_json(path, default):
+    if not os.path.exists(path):
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(default, f, ensure_ascii=False, indent=2)
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_json(path, data):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def normalize_users(raw):
+    if not isinstance(raw, dict):
+        return {}
+    new = {}
+    for k, v in raw.items():
+        if isinstance(v, dict):
+            pwd = v.get("password", "")
+            role = v.get("role", "student")
+            new[k] = {"password": pwd, "role": role}
+        else:
+            new[k] = {"password": v, "role": "student"}
+    return new
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+
+def check_password(password: str, stored: str) -> bool:
+    if not stored:
+        return False
+    if isinstance(stored, str) and stored.startswith("$2"):
+        try:
+            return bcrypt.checkpw(password.encode('utf-8'), stored.encode('utf-8'))
+        except Exception:
+            return False
+    return password == stored
+
+
+_raw_users = load_json(USERS_FILE, {})
+users = normalize_users(_raw_users)
+if any(not isinstance(_raw_users.get(k), dict) for k in _raw_users):
+    save_json(USERS_FILE, users)
+
+if not users:
+    users = {
+        "admin": {"password": hash_password("admin123"), "role": "admin"},
+        "ivan": {"password": hash_password("ivanpass"), "role": "student"},
+        "masha": {"password": hash_password("mashapass"), "role": "student"}
+    }
+    save_json(USERS_FILE, users)
+
+notes = load_json(NOTES_FILE, [])
+news = load_json(NEWS_FILE, [])
+guides = load_json(GUIDES_FILE, [])
+settings = load_json(SETTINGS_FILE, {"theme": "light"})
+tests = load_json(TESTS_FILE, [])
+results = load_json(RESULTS_FILE, [])
+classes_data = load_json(CLASSES_FILE, [])
+calendar_events = load_json(CALENDAR_FILE, [])
+student_classes = load_json(STUDENT_CLASSES_FILE, {})
+
+
+def check_admin_payload(payload):
+    if not payload:
+        return False
+    admin_login = payload.get("admin_login")
+    admin_password = payload.get("admin_password")
+    if not admin_login or not admin_password:
+        return False
+    u = users.get(admin_login)
+    return bool(u and check_password(admin_password, u.get("password")) and u.get("role") == "admin")
+
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_frontend(path):
+    if path and os.path.exists(path):
+        return send_from_directory(".", path)
+    return send_from_directory(".", "index.html")
+
+
+@app.post("/login")
+def login():
+    data = request.json or {}
+    login_username = data.get("login")
+    login_password = data.get("password")
+    if not login_username or not login_password:
+        return jsonify({"ok": False, "error": "login and password required"}), 400
+    u = users.get(login_username)
+    if not u or not check_password(login_password, u.get("password", "")):
+        return jsonify({"ok": False, "error": "invalid credentials"}), 401
+
+    user_classes = student_classes.get(login_username, [])
+    return jsonify({"ok": True, "role": u.get("role", "student"), "classes": user_classes})
+
+
+# ===== КЛАССЫ =====
+@app.get("/classes")
+def list_classes():
+    return jsonify(classes_data)
+
+
+@app.post("/admin/classes/add")
+def admin_add_class():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    class_item = {
+        "id": (max([c.get("id", 0) for c in classes_data]) + 1) if classes_data else 1,
+        "name": data.get("name", ""),
+        "description": data.get("description", ""),
+        "students": data.get("students", []),
+        "created_date": datetime.now().isoformat()
+    }
+    classes_data.append(class_item)
+    save_json(CLASSES_FILE, classes_data)
+    return jsonify({"ok": True, "id": class_item["id"]})
+
+
+@app.post("/admin/classes/update")
+def admin_update_class():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    class_id = data.get("id")
+    for cls in classes_data:
+        if cls.get("id") == class_id:
+            if "name" in data:
+                cls["name"] = data.get("name")
+            if "description" in data:
+                cls["description"] = data.get("description")
+            if "students" in data:
+                cls["students"] = data.get("students")
+            save_json(CLASSES_FILE, classes_data)
+            return jsonify({"ok": True})
+    return jsonify({"error": "class not found"}), 404
+
+
+@app.post("/admin/classes/delete")
+def admin_delete_class():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    class_id = data.get("id")
+    for i, cls in enumerate(classes_data):
+        if cls.get("id") == class_id:
+            classes_data.pop(i)
+            save_json(CLASSES_FILE, classes_data)
+            return jsonify({"ok": True})
+    return jsonify({"error": "class not found"}), 404
+
+
+@app.post("/admin/student/add_to_class")
+def admin_add_student_to_class():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+
+    student_login = data.get("student_login")
+    class_id = data.get("class_id")
+
+    if not student_login or not class_id:
+        return jsonify({"error": "student_login and class_id required"}), 400
+
+    if student_login not in users:
+        return jsonify({"error": "student not found"}), 404
+
+    if student_login not in student_classes:
+        student_classes[student_login] = []
+
+    if class_id not in student_classes[student_login]:
+        student_classes[student_login].append(class_id)
+
+    save_json(STUDENT_CLASSES_FILE, student_classes)
+    return jsonify({"ok": True})
+
+
+@app.post("/admin/student/remove_from_class")
+def admin_remove_student_from_class():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+
+    student_login = data.get("student_login")
+    class_id = data.get("class_id")
+
+    if student_login in student_classes and class_id in student_classes[student_login]:
+        student_classes[student_login].remove(class_id)
+        save_json(STUDENT_CLASSES_FILE, student_classes)
+
+    return jsonify({"ok": True})
+
+
+@app.post("/admin/classes/promote")
+def admin_promote_classes():
+    """Повышение классов на один уровень (1А -> 2А)"""
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+
+    promotion_map = {}
+
+    for cls in classes_data:
+        old_name = cls.get("name", "")
+        # Получаем номер класса и букву
+        import re
+        match = re.match(r'(\d+)([А-Я])(.*)', old_name)
+        if match:
+            num = int(match.group(1))
+            letter = match.group(2)
+            suffix = match.group(3)
+            new_num = num + 1
+            new_name = f"{new_num}{letter}{suffix}"
+            cls["name"] = new_name
+            promotion_map[cls.get("id")] = new_name
+
+    save_json(CLASSES_FILE, classes_data)
+    return jsonify({"ok": True, "promoted": promotion_map})
+
+
+@app.get("/admin/students")
+def get_all_students():
+    """Получить всех учеников с их классами"""
+    students = []
+    for login, role_info in users.items():
+        if role_info.get("role") == "student":
+            classes = student_classes.get(login, [])
+            students.append({
+                "login": login,
+                "classes": classes
+            })
+    return jsonify(students)
+
+
+# ===== КАЛЕНДАРЬ =====
+@app.get("/calendar")
+def list_calendar():
+    username = request.args.get("user", "")
+    user_role = request.args.get("role", "student")
+    classes_str = request.args.get("classes", "")
+    user_classes = [c for c in classes_str.split(",") if c]
+
+    user_events = []
+    for event in calendar_events:
+        # Админ видит все события
+        if user_role == "admin":
+            user_events.append(event)
+            continue
+
+        # Приватные события видит только создатель
+        if event.get("visibility") == "private":
+            if event.get("created_by") == username:
+                user_events.append(event)
+            continue
+
+        # Публичные события видят все
+        if event.get("visibility") == "public":
+            user_events.append(event)
+            continue
+
+        # События для конкретных классов видят ученики в этих классах
+        if event.get("visibility") == "class":
+            event_classes = event.get("visible_to", [])
+            if any(str(c) in user_classes for c in event_classes):
+                user_events.append(event)
+            continue
+
+    return jsonify(user_events)
+
+
+@app.post("/calendar/add")
+def add_calendar_event():
+    data = request.json or {}
+    username = data.get("user", "")
+    if not username:
+        return jsonify({"error": "user required"}), 400
+
+    title = data.get("title", "")
+    description = data.get("description", "")
+    date = data.get("date", "")
+    time = data.get("time", "")
+
+    if not title or not date:
+        return jsonify({"error": "title and date required"}), 400
+
+    event = {
+        "id": (max([e.get("id", 0) for e in calendar_events]) + 1) if calendar_events else 1,
+        "title": title,
+        "description": description,
+        "date": date,
+        "time": time or "00:00",
+        "created_by": username,
+        "visibility": data.get("visibility", "private"),
+        "visible_to": data.get("visible_to", [])
+    }
+    calendar_events.append(event)
+    save_json(CALENDAR_FILE, calendar_events)
+    return jsonify({"ok": True, "id": event["id"]})
+
+
+@app.post("/calendar/edit")
+def edit_calendar_event():
+    data = request.json or {}
+    event_id = data.get("id")
+    username = data.get("user", "")
+    payload = data.get("payload", {})
+
+    is_admin = check_admin_payload(payload)
+
+    for event in calendar_events:
+        if event.get("id") == event_id:
+            if is_admin or event.get("created_by") == username:
+                if "title" in data:
+                    event["title"] = data.get("title")
+                if "description" in data:
+                    event["description"] = data.get("description")
+                if "date" in data:
+                    event["date"] = data.get("date")
+                if "time" in data:
+                    event["time"] = data.get("time")
+                if "visibility" in data and is_admin:
+                    event["visibility"] = data.get("visibility")
+                if "visible_to" in data and is_admin:
+                    event["visible_to"] = data.get("visible_to")
+                save_json(CALENDAR_FILE, calendar_events)
+                return jsonify({"ok": True})
+            else:
+                return jsonify({"error": "cannot edit this event"}), 403
+    return jsonify({"error": "event not found"}), 404
+
+
+@app.post("/calendar/delete")
+def delete_calendar_event():
+    data = request.json or {}
+    event_id = data.get("id")
+    username = data.get("user", "")
+    payload = data.get("payload", {})
+
+    is_admin = check_admin_payload(payload)
+
+    for i, event in enumerate(calendar_events):
+        if event.get("id") == event_id:
+            if is_admin or event.get("created_by") == username:
+                calendar_events.pop(i)
+                save_json(CALENDAR_FILE, calendar_events)
+                return jsonify({"ok": True})
+            else:
+                return jsonify({"error": "cannot delete this event"}), 403
+    return jsonify({"error": "event not found"}), 404
+
+
+# ===== MATERIALS (NOTES) =====
+@app.get("/notes")
+def list_notes():
+    return jsonify(notes)
+
+
+@app.post("/notes")
+def add_note():
+    data = request.json or {}
+    note = {
+        "title": data.get("title", ""),
+        "desc": data.get("desc", ""),
+        "user": data.get("user", ""),
+        "image": data.get("image", ""),
+        "assignedTo": data.get("assignedTo", ""),
+        "classes": data.get("classes", [])
+    }
+    notes.append(note)
+    save_json(NOTES_FILE, notes)
+    return jsonify({"ok": True})
+
+
+@app.post("/admin/notes/delete")
+def admin_delete_note():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    try:
+        idx = int(data.get("index"))
+    except:
+        return jsonify({"error": "invalid index"}), 400
+    if idx < 0 or idx >= len(notes):
+        return jsonify({"error": "invalid index"}), 400
+    notes.pop(idx)
+    save_json(NOTES_FILE, notes)
+    return jsonify({"ok": True})
+
+
+@app.post("/admin/materials/edit")
+def admin_edit_material():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+
+    try:
+        idx = int(data.get("index"))
+    except:
+        return jsonify({"error": "invalid index"}), 400
+
+    if idx < 0 or idx >= len(notes):
+        return jsonify({"error": "invalid index"}), 400
+
+    if "title" in data:
+        notes[idx]["title"] = data.get("title", "")
+    if "desc" in data:
+        notes[idx]["desc"] = data.get("desc", "")
+    if "image" in data:
+        notes[idx]["image"] = data.get("image", "")
+    if "classes" in data:
+        notes[idx]["classes"] = data.get("classes", [])
+
+    save_json(NOTES_FILE, notes)
+    return jsonify({"ok": True})
+
+
+@app.post("/materials/edit")
+def edit_own_material():
+    data = request.json or {}
+
+    username = data.get("username")
+    try:
+        idx = int(data.get("index"))
+    except:
+        return jsonify({"error": "invalid index"}), 400
+
+    if not username:
+        return jsonify({"error": "username required"}), 400
+
+    if idx < 0 or idx >= len(notes):
+        return jsonify({"error": "invalid index"}), 400
+
+    if notes[idx].get("user") != username:
+        return jsonify({"error": "can only edit your own materials"}), 403
+
+    if "title" in data:
+        notes[idx]["title"] = data.get("title", "")
+    if "desc" in data:
+        notes[idx]["desc"] = data.get("desc", "")
+    if "image" in data:
+        notes[idx]["image"] = data.get("image", "")
+
+    save_json(NOTES_FILE, notes)
+    return jsonify({"ok": True})
+
+
+# ===== NEWS =====
+@app.get("/news")
+def list_news():
+    return jsonify(news)
+
+
+@app.post("/news")
+def add_news():
+    data = request.json or {}
+    news_item = {
+        "title": data.get("title", ""),
+        "desc": data.get("desc", ""),
+        "user": data.get("user", ""),
+        "image": data.get("image", ""),
+        "classes": data.get("classes", [])
+    }
+    news.append(news_item)
+    save_json(NEWS_FILE, news)
+    return jsonify({"ok": True})
+
+
+@app.post("/admin/news/delete")
+def admin_delete_news():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    try:
+        idx = int(data.get("index"))
+    except:
+        return jsonify({"error": "invalid index"}), 400
+    if idx < 0 or idx >= len(news):
+        return jsonify({"error": "invalid index"}), 400
+    news.pop(idx)
+    save_json(NEWS_FILE, news)
+    return jsonify({"ok": True})
+
+
+@app.post("/admin/news/update")
+def admin_update_news():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    try:
+        idx = int(data.get("index"))
+    except:
+        return jsonify({"error": "invalid index"}), 400
+    if idx < 0 or idx >= len(news):
+        return jsonify({"error": "invalid index"}), 400
+    if "title" in data:
+        news[idx]["title"] = data.get("title", news[idx].get("title", ""))
+    if "desc" in data:
+        news[idx]["desc"] = data.get("desc", news[idx].get("desc", ""))
+    if "image" in data:
+        news[idx]["image"] = data.get("image", news[idx].get("image", ""))
+    if "classes" in data:
+        news[idx]["classes"] = data.get("classes", [])
+    save_json(NEWS_FILE, news)
+    return jsonify({"ok": True})
+
+
+# ===== GUIDES =====
+@app.get("/guides")
+def list_guides():
+    return jsonify(guides)
+
+
+@app.post("/guides")
+def add_guide():
+    data = request.json or {}
+    guide = {
+        "title": data.get("title", ""),
+        "desc": data.get("desc", ""),
+        "user": data.get("user", ""),
+        "image": data.get("image", ""),
+        "classes": data.get("classes", [])
+    }
+    guides.append(guide)
+    save_json(GUIDES_FILE, guides)
+    return jsonify({"ok": True})
+
+
+@app.post("/admin/guides/delete")
+def admin_delete_guide():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    try:
+        idx = int(data.get("index"))
+    except:
+        return jsonify({"error": "invalid index"}), 400
+    if idx < 0 or idx >= len(guides):
+        return jsonify({"error": "invalid index"}), 400
+    guides.pop(idx)
+    save_json(GUIDES_FILE, guides)
+    return jsonify({"ok": True})
+
+
+@app.post("/admin/guides/update")
+def admin_update_guide():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    try:
+        idx = int(data.get("index"))
+    except:
+        return jsonify({"error": "invalid index"}), 400
+    if idx < 0 or idx >= len(guides):
+        return jsonify({"error": "invalid index"}), 400
+    if "title" in data:
+        guides[idx]["title"] = data.get("title", guides[idx].get("title", ""))
+    if "desc" in data:
+        guides[idx]["desc"] = data.get("desc", guides[idx].get("desc", ""))
+    if "image" in data:
+        guides[idx]["image"] = data.get("image", guides[idx].get("image", ""))
+    if "classes" in data:
+        guides[idx]["classes"] = data.get("classes", [])
+    save_json(GUIDES_FILE, guides)
+    return jsonify({"ok": True})
+
+
+# ===== USERS =====
+@app.post("/admin/users/list")
+def admin_users_list():
+    payload = request.json or {}
+    if not check_admin_payload(payload):
+        return jsonify({"error": "admin auth required"}), 403
+    return jsonify({k: {"role": v["role"]} for k, v in users.items()})
+
+
+@app.post("/admin/users/add_or_update")
+def admin_users_add_update():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    login = data.get("login")
+    password = data.get("password")
+    role = data.get("role", "student")
+    if not login:
+        return jsonify({"error": "login required"}), 400
+    if password:
+        users[login] = {"password": hash_password(password), "role": role}
+    else:
+        if login in users:
+            users[login]["role"] = role
+        else:
+            return jsonify({"error": "password required for new user"}), 400
+    save_json(USERS_FILE, users)
+    return jsonify({"ok": True})
+
+
+@app.post("/admin/users/delete")
+def admin_users_delete():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    login = data.get("login")
+    if not login or login not in users:
+        return jsonify({"error": "user not found"}), 404
+    if users[login].get("role") == "admin":
+        admins = [k for k, v in users.items() if v.get("role") == "admin"]
+        if len(admins) <= 1:
+            return jsonify({"error": "cannot delete the last admin"}), 400
+    users.pop(login, None)
+    save_json(USERS_FILE, users)
+    return jsonify({"ok": True})
+
+
+# ===== SETTINGS =====
+@app.get("/admin/settings/theme")
+def get_theme():
+    return jsonify(settings)
+
+
+@app.post("/admin/settings/theme")
+def set_theme():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    theme = data.get("theme")
+    if theme not in ["light", "dark"]:
+        return jsonify({"error": "invalid theme"}), 400
+    settings["theme"] = theme
+    save_json(SETTINGS_FILE, settings)
+    return jsonify({"ok": True})
+
+
+# ===== TESTS =====
+@app.get("/tests")
+def get_tests_public():
+    safe = []
+    for t in tests:
+        tcopy = {k: v for k, v in t.items() if k != 'questions'}
+        qs = []
+        for q in t.get('questions', []):
+            if not isinstance(q, dict):
+                qtext = str(q) if q is not None else ''
+                qcopy = {'q': qtext, 'choices': [], 'type': 'text', 'image': '', 'answers': []}
+            else:
+                qtext = q.get('q') or q.get('question') or q.get('text') or ''
+                qtype = q.get('type', 'single')
+                image = q.get('image', '')
+                choices_raw = q.get('choices', [])
+
+                if choices_raw is None:
+                    choices = []
+                elif isinstance(choices_raw, list):
+                    normalized = []
+                    for c in choices_raw:
+                        if c is None:
+                            continue
+                        if isinstance(c, dict):
+                            normalized.append(str(c.get('text') or c.get('label') or c.get('choice') or json.dumps(c,
+                                                                                                                   ensure_ascii=False)))
+                        else:
+                            normalized.append(str(c))
+                    choices = normalized
+                else:
+                    if isinstance(choices_raw, dict):
+                        choices = [str(choices_raw.get('text') or choices_raw.get('label') or json.dumps(choices_raw,
+                                                                                                         ensure_ascii=False))]
+                    else:
+                        choices = [str(choices_raw)]
+
+                answers = q.get('answers', [])
+                if not isinstance(answers, list):
+                    answers = [answers] if answers else []
+
+                qcopy = {'q': qtext, 'choices': choices, 'type': qtype, 'image': image, 'answers': answers}
+            qs.append(qcopy)
+        tcopy['questions'] = qs
+        safe.append(tcopy)
+    return jsonify(safe)
+
+
+@app.post("/tests/submit")
+def submit_test():
+    data = request.json or {}
+    test_id = data.get('test_id')
+    answers = data.get('answers', [])
+    user = data.get('user', 'unknown')
+    t = next((x for x in tests if x.get('id') == test_id), None)
+    if not t:
+        return jsonify({'error': 'test not found'}), 404
+
+    correct = 0
+    details = []
+
+    for i, q in enumerate(t.get('questions', [])):
+        user_answer = answers[i] if i < len(answers) else None
+        correct_answers = q.get('answers', q.get('correct'))
+
+        if not isinstance(correct_answers, list):
+            correct_answers = [correct_answers] if correct_answers is not None else []
+
+        is_correct = False
+        if q.get('type') == 'multiple':
+            if isinstance(user_answer, list):
+                user_answer_set = set(user_answer)
+                correct_set = set(correct_answers)
+                is_correct = user_answer_set == correct_set
+        else:
+            is_correct = user_answer in correct_answers
+
+        if is_correct:
+            correct += 1
+
+        details.append({
+            'question': i + 1,
+            'correct': is_correct,
+            'user_answer': user_answer,
+            'correct_answer': correct_answers
+        })
+
+    score = {
+        'user': user,
+        'test_id': test_id,
+        'score': correct,
+        'total': len(t.get('questions', [])),
+        'percentage': round((correct / len(t.get('questions', []))) * 100) if len(t.get('questions', [])) > 0 else 0,
+        'details': details
+    }
+    results.append(score)
+    save_json(RESULTS_FILE, results)
+    return jsonify(score)
+
+
+@app.post("/admin/tests/list")
+def admin_tests_list():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    return jsonify(tests)
+
+
+@app.post("/admin/tests/add_or_update")
+def admin_tests_add_update():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    test = data.get('test')
+    if not test or 'title' not in test or 'questions' not in test:
+        return jsonify({'error': 'invalid test structure'}), 400
+    if 'id' not in test:
+        test['id'] = (max([t.get('id', 0) for t in tests]) + 1) if tests else 1
+        tests.append(test)
+    else:
+        for i, t in enumerate(tests):
+            if t.get('id') == test.get('id'):
+                tests[i] = test
+                break
+        else:
+            tests.append(test)
+    save_json(TESTS_FILE, tests)
+    return jsonify({'ok': True, 'id': test['id']})
+
+
+@app.post("/admin/tests/delete")
+def admin_tests_delete():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    tid = data.get('id')
+    for i, t in enumerate(tests):
+        if t.get('id') == tid:
+            tests.pop(i)
+            save_json(TESTS_FILE, tests)
+            return jsonify({'ok': True})
+    return jsonify({'error': 'not found'}), 404
+
+
+@app.post("/admin/results")
+def admin_results():
+    data = request.json or {}
+    if not check_admin_payload(data):
+        return jsonify({"error": "admin auth required"}), 403
+    return jsonify(results)
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

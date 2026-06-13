@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>Учитель Онлайн V6.0.0</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    * { box-sizing: border-box; }
+    :root{
+      --bg-light: #f5f7fa;
+      --fg-light: #1a1a1a;
+      --card-light: #ffffff;
+      --bg-dark: #0d1117;
+      --fg-dark: #e6edf3;
+      --card-dark: #161b22;
+      --input-bg-light: #f6f8fb;
+      --input-bg-dark: #0d1117;
+      --input-fg-light: #1a1a1a;
+      --input-fg-dark: #c9d1d9;
+      --input-border-light: #d0d7de;
+      --input-border-dark: #30363d;
+      --primary: #0969da;
+      --primary-dark: #0860ca;
+      --primary-light: #54a3ff;
+      --muted: #656d76;
+      --success: #1a7f37;
+      --danger: #da3633;
+      --warning: #d29922;
+    }
+    html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg)}
+    body.light-theme{--bg:var(--bg-light);--fg:var(--fg-light);--card:var(--card-light);--input-bg:var(--input-bg-light);--input-fg:var(--input-fg-light);--input-border:var(--input-border-light)}
+    body.dark-theme{--bg:var(--bg-dark);--fg:var(--fg-dark);--card:var(--card-dark);--input-bg:var(--input-bg-dark);--input-fg:var(--input-fg-dark);--input-border:var(--input-border-dark)}
+    .container{max-width:1400px;margin:0 auto;padding:20px}
+    header{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid var(--input-border);flex-wrap:wrap}
+    h1{margin:0;font-size:32px;font-weight:800;color:var(--primary)}
+    .tabs{display:flex;gap:5px;margin-bottom:20px;border-bottom:2px solid var(--input-border);flex-wrap:wrap;overflow-x:auto}
+    .tab-btn{background:transparent;border:none;padding:14px 20px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;transition:all 0.3s;position:relative;top:2px;white-space:nowrap}
+    .tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+    .tab-btn:hover{color:var(--fg)}
+    .tab-content{display:none}
+    .tab-content.active{display:block;animation:fadeIn 0.3s}
+    @keyframes fadeIn{from{opacity:0.8}to{opacity:1}}
+    .card{background:var(--card);padding:24px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);margin-bottom:20px;border:1px solid var(--input-border)}
+    input,textarea,select,button{padding:12px 14px;border-radius:8px;border:1px solid var(--input-border);font-size:14px;background:var(--input-bg);color:var(--input-fg);font-family:inherit;transition:all 0.2s}
+    input:focus,textarea:focus,select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(9,105,218,0.1)}
+    input,textarea,select{width:100%;margin-top:8px}
+    textarea{min-height:100px;resize:vertical}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    .note-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:16px}
+    .note-card{background:var(--card);padding:20px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);transition:all 0.3s;border:1px solid var(--input-border);cursor:pointer}
+    .note-card:hover{transform:translateY(-6px);box-shadow:0 8px 24px rgba(0,0,0,0.15);border-color:var(--primary)}
+    .note-card h4{margin:0 0 12px 0;font-size:17px;font-weight:700;color:var(--primary)}
+    .note-card p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+    .badge{display:inline-block;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;margin-top:8px}
+    .badge-class{background:rgba(9,105,218,0.15);color:var(--primary)}
+    .badge-public{background:rgba(38,166,65,0.15);color:var(--success)}
+    .btn{background:var(--primary);color:#fff;border:none;padding:12px 18px;border-radius:8px;cursor:pointer;font-weight:600;transition:all 0.3s;display:inline-block;font-size:14px}
+    .btn:hover{background:var(--primary-dark);transform:translateY(-2px)}
+    .btn:active{transform:translateY(0)}
+    .btn.ghost{background:transparent;color:var(--primary);border:1px solid var(--primary)}
+    .btn.ghost:hover{background:rgba(9,105,218,0.08)}
+    .btn.danger{background:var(--danger)}
+    .btn.danger:hover{background:#c82828}
+    .btn.success{background:var(--success)}
+    .btn.success:hover{background:#157639}
+    .btn.warning{background:var(--warning)}
+    .btn.warning:hover{background:#ae8f0f}
+    .btn.block{display:block;width:100%;margin-top:12px}
+    .btn.small{padding:8px 12px;font-size:12px;margin-right:4px;margin-top:8px}
+    .btn-group{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+    .btn-group .btn{flex:1;min-width:100px}
+    .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+    .modal.active{display:flex}
+    .modal-content{background:var(--card);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);width:100%;max-width:600px;padding:32px;position:relative;max-height:90vh;overflow-y:auto}
+    .modal-close{position:absolute;top:16px;right:16px;background:none;border:none;font-size:28px;cursor:pointer;color:var(--muted);transition:color 0.2s}
+    .modal-close:hover{color:var(--primary)}
+
+    /* КАЛЕНДАРЬ СЕТКА */
+    .calendar-container{background:var(--card);border-radius:12px;padding:20px;border:1px solid var(--input-border)}
+    .calendar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .calendar-header button{background:var(--primary);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600}
+    .calendar-header button:hover{background:var(--primary-dark)}
+    .calendar-header h3{margin:0;color:var(--primary)}
+    .calendar-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:8px}
+    .calendar-weekday{text-align:center;font-weight:700;font-size:12px;color:var(--muted);padding:8px;text-transform:uppercase}
+    .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+    .calendar-cell{aspect-ratio:1;border:1px solid var(--input-border);border-radius:8px;padding:8px;background:var(--input-bg);cursor:pointer;transition:all 0.2s;min-height:80px;display:flex;flex-direction:column;position:relative;overflow:hidden}
+    .calendar-cell:hover{border-color:var(--primary);background:rgba(9,105,218,0.05)}
+    .calendar-cell.other-month{opacity:0.3;background:transparent}
+    .calendar-cell.today{border:2px solid var(--primary);background:rgba(9,105,218,0.1)}
+    .calendar-cell-date{font-weight:700;font-size:14px;color:var(--primary);margin-bottom:4px}
+    .calendar-cell-events{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis}
+    .calendar-event-dot{width:4px;height:4px;background:var(--primary);border-radius:50%;display:inline-block;margin-right:2px}
+
+    .class-item{padding:16px;background:var(--input-bg);border-radius:8px;margin-bottom:12px;border:1px solid var(--input-border);transition:all 0.2s}
+    .class-item:hover{border-color:var(--primary)}
+    .class-item h4{margin:0 0 8px 0;color:var(--primary);font-weight:700}
+    .class-item p{margin:0;color:var(--muted);font-size:13px}
+    .admin-section{background:rgba(9,105,218,0.05);padding:20px;border-radius:12px;border:1px solid var(--input-border)}
+    .small{font-size:12px;color:var(--muted);margin-top:6px}
+    .form-row{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+    .form-row input,.form-row select{flex:1;min-width:150px}
+    @media(max-width:768px){
+      .container{padding:12px}
+      .note-grid{grid-template-columns:1fr}
+      .modal-content{max-width:95%;padding:20px}
+      .form-row{flex-direction:column}
+      header{flex-direction:column;align-items:flex-start}
+      .tabs{flex-direction:column}
+      .grid-2{grid-template-columns:1fr}
+      h1{font-size:24px}
+    }
+  </style>
+</head>
+<body class="light-theme">
+  <div class="container">
+    <header>
+      <h1>📚 Учитель Онлайн V6.0.0</h1>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div id="userInfo" class="small"></div>
+        <button id="logoutBtn" class="btn ghost" style="display:none;margin:0">Выйти</button>
+      </div>
+    </header>
+
+    <div id="loginBox" class="card">
+      <h3>🔐 Вход в систему</h3>
+      <input id="login" placeholder="Логин" autocomplete="username">
+      <input id="password" type="password" placeholder="Пароль" autocomplete="current-password">
+      <button id="loginBtn" class="btn block">Войти</button>
+      <div id="loginError" class="small" style="color:var(--danger);margin-top:10px"></div>
+    </div>
+
+    <div id="mainBox" style="display:none">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('materials')">📄 Материалы</button>
+        <button class="tab-btn" onclick="switchTab('calendar')">📅 Календарь</button>
+        <button class="tab-btn" onclick="switchTab('news')">📰 Новости</button>
+        <button class="tab-btn" onclick="switchTab('guides')">📚 Пособия</button>
+        <button class="tab-btn" onclick="switchTab('tests')">🧪 Тесты</button>
+        <button class="tab-btn" id="adminTabBtn" onclick="switchTab('admin')" style="display:none">⚙️ Панель</button>
+      </div>
+
+      <!-- МАТЕРИАЛЫ -->
+      <div id="materials" class="tab-content active">
+        <div class="card">
+          <h3>📄 Материалы</h3>
+          <div id="materialForm" style="display:none;background:rgba(9,105,218,0.05);padding:16px;border-radius:8px;margin-bottom:16px">
+            <input id="title" placeholder="Название материала">
+            <textarea id="desc" placeholder="Описание материала"></textarea>
+            <input id="image" type="file" accept="image/*">
+            <label style="margin-top:12px;font-weight:600">📚 Видимость для классов:</label>
+            <select id="classSelect" multiple style="min-height:100px;margin-top:8px">
+              <option value="">Всем (общая школа)</option>
+            </select>
+            <div class="btn-group">
+              <button id="addNoteBtn" class="btn">➕ Добавить</button>
+              <button id="cancelMaterialBtn" class="btn ghost">Отменить</button>
+            </div>
+          </div>
+          <div class="form-row">
+            <button id="toggleMaterialForm" class="btn ghost" onclick="toggleMaterialForm()">➕ Новый материал</button>
+            <button id="refreshBtn" class="btn ghost">🔄 Обновить</button>
+          </div>
+          <div id="notesList" class="note-grid"></div>
+        </div>
+      </div>
+
+      <!-- КАЛЕНДАРЬ -->
+      <div id="calendar" class="tab-content">
+        <div class="card">
+          <h3>📅 Календарь</h3>
+
+          <div class="grid-2">
+            <!-- ФОРМА ДОБАВЛЕНИЯ СОБЫТИЯ -->
+            <div style="background:rgba(9,105,218,0.05);padding:16px;border-radius:8px">
+              <h4>➕ Добавить событие</h4>
+              <input id="eventTitle" placeholder="Название события">
+              <textarea id="eventDesc" placeholder="Описание события" style="min-height:80px"></textarea>
+              <input id="eventDate" type="date">
+              <input id="eventTime" type="time">
+              <label style="margin-top:12px;font-weight:600">Видимость:</label>
+              <select id="eventVisibility">
+                <option value="private">🔒 Только мне</option>
+                <option value="public">🌍 Всем в школе</option>
+                <option value="class">👥 Выбранным классам</option>
+              </select>
+              <select id="eventClasses" multiple style="min-height:80px;display:none;margin-top:8px">
+                <option value="">Выберите классы...</option>
+              </select>
+              <button id="addEventBtn" class="btn block" style="margin-top:12px">Добавить событие</button>
+            </div>
+
+            <!-- КАЛЕНДАРЬ СЕТКА -->
+            <div class="calendar-container">
+              <div class="calendar-header">
+                <button onclick="prevMonth()">← Назад</button>
+                <h3 id="calendarMonth"></h3>
+                <button onclick="nextMonth()">Вперед →</button>
+              </div>
+              <div class="calendar-weekdays">
+                <div class="calendar-weekday">Пн</div>
+                <div class="calendar-weekday">Вт</div>
+                <div class="calendar-weekday">Ср</div>
+                <div class="calendar-weekday">Чт</div>
+                <div class="calendar-weekday">Пт</div>
+                <div class="calendar-weekday">Сб</div>
+                <div class="calendar-weekday">Вс</div>
+              </div>
+              <div class="calendar-grid" id="calendarGrid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- НОВОСТИ -->
+      <div id="news" class="tab-content">
+        <div class="card">
+          <h3>📰 Новости</h3>
+          <div id="newsForm" style="display:none;margin-bottom:16px;padding:16px;background:rgba(9,105,218,0.05);border-radius:8px">
+            <input id="newsTitle" placeholder="Заголовок">
+            <textarea id="newsDesc" placeholder="Содержание"></textarea>
+            <input id="newsImage" type="file" accept="image/*">
+            <label style="margin-top:12px;font-weight:600">Классы:</label>
+            <select id="newsClasses" multiple style="min-height:80px;margin-top:8px">
+              <option value="">Всем</option>
+            </select>
+            <div class="btn-group">
+              <button id="saveNewsBtn" class="btn">Сохранить</button>
+              <button id="cancelNewsBtn" class="btn ghost" onclick="toggleNewsForm()">Отменить</button>
+            </div>
+          </div>
+          <div id="newsAdminBtn" style="display:none;margin-bottom:16px">
+            <button id="addNewsBtn" class="btn ghost" onclick="toggleNewsForm()">➕ Добавить новость</button>
+          </div>
+          <div id="newsList" class="note-grid"></div>
+        </div>
+      </div>
+
+      <!-- ПОСОБИЯ -->
+      <div id="guides" class="tab-content">
+        <div class="card">
+          <h3>📚 Пособия</h3>
+          <div id="guidesForm" style="display:none;margin-bottom:16px;padding:16px;background:rgba(9,105,218,0.05);border-radius:8px">
+            <input id="guideTitle" placeholder="Название">
+            <textarea id="guideDesc" placeholder="Описание"></textarea>
+            <input id="guideImage" type="file" accept="image/*">
+            <label style="margin-top:12px;font-weight:600">Классы:</label>
+            <select id="guideClasses" multiple style="min-height:80px;margin-top:8px">
+              <option value="">Всем</option>
+            </select>
+            <div class="btn-group">
+              <button id="saveGuideBtn" class="btn">Сохранить</button>
+              <button id="cancelGuideBtn" class="btn ghost" onclick="toggleGuidesForm()">Отменить</button>
+            </div>
+          </div>
+          <div id="guidesAdminBtn" style="display:none;margin-bottom:16px">
+            <button id="addGuideBtn" class="btn ghost" onclick="toggleGuidesForm()">➕ Добавить пособие</button>
+          </div>
+          <div id="guidesList" class="note-grid"></div>
+        </div>
+      </div>
+
+      <!-- ТЕСТЫ -->
+      <div id="tests" class="tab-content">
+        <div class="card">
+          <h3>🧪 Тесты</h3>
+          <div id="testsAdminBtn" style="display:none;margin-bottom:16px">
+            <button id="createTestBtn" class="btn ghost" onclick="openTestWizard()">➕ Создать тест</button>
+          </div>
+          <div id="testsList" class="note-grid"></div>
+        </div>
+      </div>
+
+      <!-- ПАНЕЛЬ АДМИНИСТРАТОРА -->
+      <div id="admin" class="tab-content">
+        <div class="card admin-section">
+          <h3>⚙️ Учительская панель</h3>
+
+          <h4 style="margin-top:20px">👥 Управление классами</h4>
+          <div class="form-row">
+            <input id="className" placeholder="Название класса" style="flex:2">
+            <button id="addClassBtn" class="btn">Создать класс</button>
+          </div>
+          <div id="classesList" style="margin-top:16px;max-height:400px;overflow-y:auto"></div>
+
+          <h4 style="margin-top:20px">👤 Управление пользователями</h4>
+          <div class="form-row">
+            <input id="u_login" placeholder="Логин" style="flex:1;min-width:100px">
+            <input id="u_pass" placeholder="Пароль" style="flex:1;min-width:100px">
+            <select id="u_role" style="flex:1;min-width:80px">
+              <option value="student">Ученик</option>
+              <option value="admin">Админ</option>
+            </select>
+            <button id="saveUserBtn" class="btn">Сохранить</button>
+          </div>
+          <div class="form-row">
+            <input id="del_login" placeholder="Логин для удаления" style="flex:1;min-width:150px">
+            <button id="delUserBtn" class="btn danger">Удалить</button>
+          </div>
+
+          <h4 style="margin-top:20px">🎨 Тема оформления</h4>
+          <div class="form-row">
+            <select id="themeSel">
+              <option value="light">☀️ Светлая</option>
+              <option value="dark">🌙 Тёмная</option>
+            </select>
+            <button id="themeBtn" class="btn">Применить</button>
+          </div>
+
+          <h4 style="margin-top:20px">📊 Пользователи системы</h4>
+          <div id="usersList" style="max-height:200px;overflow-y:auto;border:1px solid var(--input-border);padding:12px;border-radius:8px;background:var(--input-bg)"></div>
+
+          <h4 style="margin-top:20px">📈 Результаты тестов</h4>
+          <button id="loadResultsBtn" class="btn ghost">📊 Загрузить результаты</button>
+          <div id="resultsList" style="max-height:200px;overflow-y:auto;margin-top:12px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- МОДАЛИ -->
+  <div id="eventModal" class="modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeEventModal()">✕</button>
+      <h2>📅 События на этот день</h2>
+      <div id="eventModalList"></div>
+    </div>
+  </div>
+
+  <div id="editClassModal" class="modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeEditClassModal()">✕</button>
+      <h2>✏️ Редактирование класса</h2>
+      <input id="editClassName" placeholder="Название класса">
+      <textarea id="editClassDesc" placeholder="Описание класса" style="min-height:80px;margin-top:12px"></textarea>
+      <div class="btn-group" style="margin-top:16px">
+        <button class="btn ghost" onclick="closeEditClassModal()">Отменить</button>
+        <button class="btn success" id="saveEditClassBtn">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="testModal" class="modal">
+    <div class="modal-content" style="max-width:700px">
+      <button class="modal-close" onclick="closeTestModal()">✕</button>
+      <h2 id="testModalTitle">🧪 Тест</h2>
+      <div id="testContent"></div>
+      <div class="btn-group">
+        <button id="prevBtn" class="btn ghost">← Назад</button>
+        <button id="nextBtn" class="btn">Далее →</button>
+        <button id="submitBtn" class="btn success" style="display:none">✓ Отправить</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="testWizardModal" class="modal">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeWizardModal()">✕</button>
+      <h2>🧪 Создание теста</h2>
+      <div id="wizardStep1" style="display:block">
+        <label>Название теста:</label>
+        <input id="wizTestTitle" placeholder="Введите название">
+        <label style="margin-top:12px">Описание:</label>
+        <textarea id="wizTestDesc" placeholder="Описание теста"></textarea>
+        <label style="margin-top:12px">Классы:</label>
+        <select id="wizTestClasses" multiple style="min-height:80px;margin-top:8px">
+          <option value="">Всем</option>
+        </select>
+        <button id="nextWizStep1" class="btn block" style="margin-top:16px">Далее</button>
+      </div>
+      <div id="wizardStep2" style="display:none">
+        <label>Вопрос:</label>
+        <input id="wizQuestion" placeholder="Введите вопрос">
+        <label style="margin-top:12px">Тип:</label>
+        <select id="wizQType">
+          <option value="single">Один ответ</option>
+          <option value="multiple">Несколько ответов</option>
+        </select>
+        <label style="margin-top:12px">Варианты ответов (через запятую):</label>
+        <input id="wizChoices" placeholder="Ответ 1, Ответ 2, Ответ 3">
+        <label style="margin-top:12px">Правильные ответы (через запятую):</label>
+        <input id="wizAnswers" placeholder="Ответ 1">
+        <button id="addWizQuestion" class="btn">Добавить вопрос</button>
+        <div id="wizQuestionsPreview" style="margin-top:16px"></div>
+        <div class="btn-group" style="margin-top:16px">
+          <button id="backWizStep2" class="btn ghost">Назад</button>
+          <button id="finishWizTest" class="btn success">Создать тест</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = "";
+    let current = "", role = "", currentPass = "", currentUserClasses = [];
+    let currentTestData = null, currentQuestionIndex = 0, testAnswers = [];
+    let wizardQuestions = [], wizardTestClasses = [];
+    let classes_data = [];
+    let calendar_events = [];
+    let currentMonth = new Date();
+    let currentEditClassId = -1;
+
+    async function switchTab(tab) {
+      document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+      document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
+      document.getElementById(tab).classList.add("active");
+      event.target.classList.add("active");
+
+      if (tab === "calendar") { loadCalendar(); renderCalendar(); }
+      if (tab === "admin") { loadClasses(); loadUsersList(); }
+    }
+
+    function toggleMaterialForm() {
+      const form = document.getElementById("materialForm");
+      form.style.display = form.style.display === "none" ? "block" : "none";
+    }
+
+    function toggleNewsForm() {
+      const form = document.getElementById("newsForm");
+      form.style.display = form.style.display === "none" ? "block" : "none";
+    }
+
+    function toggleGuidesForm() {
+      const form = document.getElementById("guidesForm");
+      form.style.display = form.style.display === "none" ? "block" : "none";
+    }
+
+    async function login() {
+      const login = document.getElementById("login").value;
+      const password = document.getElementById("password").value;
+      if (!login || !password) {
+        document.getElementById("loginError").textContent = "Логин и пароль обязательны";
+        return;
+      }
+      try {
+        const res = await fetch(API + "/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ login, password })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          current = login;
+          currentPass = password;
+          role = data.role;
+          currentUserClasses = data.classes || [];
+          document.getElementById("loginBox").style.display = "none";
+          document.getElementById("mainBox").style.display = "block";
+          document.getElementById("userInfo").textContent = `👤 ${login} (${role === "admin" ? "👨‍🏫 Учитель" : "👨‍🎓 Ученик"})`;
+          document.getElementById("logoutBtn").style.display = "block";
+          document.getElementById("adminTabBtn").style.display = role === "admin" ? "block" : "none";
+          if (role === "admin") {
+            document.getElementById("newsAdminBtn").style.display = "block";
+            document.getElementById("guidesAdminBtn").style.display = "block";
+            document.getElementById("testsAdminBtn").style.display = "block";
+          }
+          loadClasses();
+          loadNotes();
+          loadNews();
+          loadGuides();
+          loadTests();
+          loadCalendar();
+        } else {
+          document.getElementById("loginError").textContent = data.error || "Ошибка входа";
+        }
+      } catch (e) {
+        document.getElementById("loginError").textContent = "Ошибка подключения";
+      }
+    }
+
+    async function loadClasses() {
+      try {
+        const res = await fetch(API + "/classes");
+        classes_data = await res.json();
+        updateClassSelects();
+        displayAdminClasses();
+      } catch (e) {
+        console.error("Error loading classes:", e);
+      }
+    }
+
+    function updateClassSelects() {
+      const selects = ["classSelect", "newsClasses", "guideClasses", "eventClasses", "wizTestClasses"];
+      selects.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        const current = select.value;
+        select.innerHTML = '<option value="">Всем</option>';
+        classes_data.forEach(cls => {
+          const opt = document.createElement("option");
+          opt.value = cls.id;
+          opt.textContent = cls.name;
+          select.appendChild(opt);
+        });
+        select.value = current;
+      });
+    }
+
+    async function loadCalendar() {
+      try {
+        const res = await fetch(API + "/calendar?user=" + current + "&role=" + role + "&classes=" + (currentUserClasses || []).join(","));
+        calendar_events = await res.json();
+      } catch (e) {
+        console.error("Error loading calendar:", e);
+      }
+    }
+
+    function renderCalendar() {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth();
+
+      document.getElementById("calendarMonth").textContent = currentMonth.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDate = new Date(firstDay);
+      startDate.setDate(startDate.getDate() - firstDay.getDay() + 1);
+
+      const grid = document.getElementById("calendarGrid");
+      grid.innerHTML = "";
+
+      let currentDate = new Date(startDate);
+      for (let i = 0; i < 42; i++) {
+        const cell = document.createElement("div");
+        cell.className = "calendar-cell";
+
+        if (currentDate.getMonth() !== month) {
+          cell.classList.add("other-month");
+        }
+
+        const today = new Date();
+        if (currentDate.getDate() === today.getDate() && currentDate.getMonth() === today.getMonth() && currentDate.getFullYear() === today.getFullYear()) {
+          cell.classList.add("today");
+        }
+
+        const dateStr = currentDate.getFullYear() + "-" + String(currentDate.getMonth() + 1).padStart(2, "0") + "-" + String(currentDate.getDate()).padStart(2, "0");
+        const dayEvents = calendar_events.filter(e => e.date === dateStr);
+
+        let html = `<div class="calendar-cell-date">${currentDate.getDate()}</div>`;
+        if (dayEvents.length > 0) {
+          html += `<div class="calendar-cell-events">`;
+          dayEvents.slice(0, 2).forEach(e => {
+            html += `<span class="calendar-event-dot"></span>${e.title.substring(0, 8)}...<br>`;
+          });
+          if (dayEvents.length > 2) html += `<span class="calendar-event-dot"></span>+${dayEvents.length - 2}`;
+          html += `</div>`;
+        }
+
+        cell.innerHTML = html;
+        cell.onclick = () => showDayEvents(dateStr, dayEvents);
+        grid.appendChild(cell);
+
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+
+    function prevMonth() {
+      currentMonth.setMonth(currentMonth.getMonth() - 1);
+      renderCalendar();
+    }
+
+    function nextMonth() {
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+      renderCalendar();
+    }
+
+    function showDayEvents(dateStr, events) {
+      const list = document.getElementById("eventModalList");
+      list.innerHTML = "<h4>" + new Date(dateStr).toLocaleDateString("ru-RU") + "</h4>";
+
+      if (events.length === 0) {
+        list.innerHTML += "<p style='color:var(--muted)'>Нет событий</p>";
+      } else {
+        events.forEach(e => {
+          list.innerHTML += `
+            <div style="padding:12px;background:var(--input-bg);border-radius:8px;margin-bottom:8px;border-left:4px solid var(--primary)">
+              <strong>${e.title}</strong><br>
+              ⏰ ${e.time}<br>
+              <small>${e.description}</small>
+              ${role === "admin" || e.created_by === current ? `
+                <div style="margin-top:8px;display:flex;gap:4px">
+                  <button class="btn small danger" onclick="deleteCalendarEvent(${e.id})">🗑️</button>
+                </div>
+              ` : ""}
+            </div>
+          `;
+        });
+      }
+
+      document.getElementById("eventModal").classList.add("active");
+    }
+
+    function closeEventModal() {
+      document.getElementById("eventModal").classList.remove("active");
+    }
+
+    async function addCalendarEvent() {
+      const title = document.getElementById("eventTitle").value;
+      const description = document.getElementById("eventDesc").value;
+      const date = document.getElementById("eventDate").value;
+      const time = document.getElementById("eventTime").value;
+      const visibility = document.getElementById("eventVisibility").value;
+      const visible_to = visibility === "class" ? Array.from(document.getElementById("eventClasses").selectedOptions).map(o => o.value) : [];
+
+      if (!title || !date || !time) {
+        alert("Заполните все поля");
+        return;
+      }
+
+      try {
+        await fetch(API + "/calendar/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user: current, title, description, date, time, visibility, visible_to })
+        });
+        document.getElementById("eventTitle").value = "";
+        document.getElementById("eventDesc").value = "";
+        document.getElementById("eventDate").value = "";
+        document.getElementById("eventTime").value = "";
+        loadCalendar();
+        renderCalendar();
+      } catch (e) {
+        console.error("Error:", e);
+      }
+    }
+
+    async function deleteCalendarEvent(id) {
+      if (!confirm("Удалить событие?")) return;
+      try {
+        await fetch(API + "/calendar/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, user: current, payload: { admin_login: current, admin_password: currentPass } })
+        });
+        loadCalendar();
+        renderCalendar();
+        closeEventModal();
+      } catch (e) {
+        console.error("Error:", e);
+      }
+    }
+
+    async function addAdminClass() {
+      const name = document.getElementById("className").value;
+      if (!name) {
+        alert("Введите название класса");
+        return;
+      }
+      try {
+        await fetch(API + "/admin/classes/add", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, description: "", admin_login: current, admin_password: currentPass })
+        });
+        document.getElementById("className").value = "";
+        loadClasses();
+      } catch (e) {
+        console.error("Error:", e);
+      }
+    }
+
+    function displayAdminClasses() {
+      const list = document.getElementById("classesList");
+      list.innerHTML = "";
+      classes_data.forEach(cls => {
+        const div = document.createElement("div");
+        div.className = "class-item";
+        div.innerHTML = `
+          <h4>📚 ${cls.name}</h4>
+          <p>👥 Учеников: ${cls.students ? cls.students.length : 0}</p>
+          <p>${cls.description || "Нет описания"}</p>
+          <div style="margin-top:8px;display:flex;gap:6px">
+            <button class="btn small ghost" onclick="editClass(${cls.id})">✏️ Редактировать</button>
+            <button class="btn small danger" onclick="deleteClass(${cls.id})">🗑️ Удалить</button>
+          </div>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    function editClass(id) {
+      const cls = classes_data.find(c => c.id === id);
+      if (!cls) return;
+      currentEditClassId = id;
+      document.getElementById("editClassName").value = cls.name;
+      document.getElementById("editClassDesc").value = cls.description || "";
+      document.getElementById("editClassModal").classList.add("active");
+    }
+
+    function closeEditClassModal() {
+      document.getElementById("editClassModal").classList.remove("active");
+    }
+
+    document.getElementById("saveEditClassBtn").onclick = async () => {
+      const name = document.getElementById("editClassName").value;
+      const description = document.getElementById("editClassDesc").value;
+      if (!name) { alert("Введите название"); return; }
+      try {
+        await fetch(API + "/admin/classes/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: currentEditClassId, name, description, admin_login: current, admin_password: currentPass })
+        });
+        loadClasses();
+        closeEditClassModal();
+      } catch (e) {
+        console.error("Error:", e);
+      }
+    };
+
+    async function deleteClass(id) {
+      if (!confirm("Удалить класс?")) return;
+      try {
+        await fetch(API + "/admin/classes/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, admin_login: current, admin_password: currentPass })
+        });
+        loadClasses();
+      } catch (e) {
+        console.error("Error:", e);
+      }
+    }
+
+    async function loadNotes() {
+      try {
+        const res = await fetch(API + "/notes");
+        const notes = await res.json();
+        const list = document.getElementById("notesList");
+        list.innerHTML = "";
+        notes.forEach((note, idx) => {
+          const card = document.createElement("div");
+          card.className = "note-card";
+          const classInfo = note.classes && note.classes.length > 0
+            ? classes_data.find(c => c.id == note.classes[0])
+            : null;
+          card.innerHTML = `
+            <h4>📄 ${note.title}</h4>
+            <p>${note.desc}</p>
+            ${note.classes && note.classes.length > 0 ? `<span class="badge badge-class">📚 ${classInfo ? classInfo.name : "Класс"}</span>` : "<span class=\"badge badge-public\">🌍 Всем</span>"}
+            <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
+              ${role === "admin" ? `
+                <button class="btn small danger" onclick="deleteNote(${idx})">🗑️</button>
+              ` : ""}
+            </div>
+          `;
+          list.appendChild(card);
+        });
+      } catch (e) {
+        console.error("Error:", e);
+      }
+    }
+
+    async function addNote() {
+      const title = document.getElementById("title").value;
+      const desc = document.getElementById("desc").value;
+      const classes = Array.from(document.getElementById("classSelect").selectedOptions).map(o => o.value);
+
+      if (!title) {
+        alert("Введите название");
+        return;
+      }
+
+      try {
+        await fetch(API + "/notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title, desc, user: current, image: "", assignedTo: "", classes })
+        });
+        document.getElementById("title").value = "";
+        document.getElementById("desc").value = "";
+        document.getElementById("classSelect").value = "";
+        loadNotes();
+        document.getElementById("materialForm").style.display = "none";
+      } catch (e) {
+        console.error("Error:", e);
+      }
+    }
+
+    async function deleteNote(idx) {
+      if (!confirm("Удалить?")) return;
+      try {
+        await fetch(API + "/admin/notes/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ index: idx, admin_login: current, admin_password: currentPass })
+        });
+        loadNotes();
+      } catch (e) {
+        console.error("Error:", e);
+      }
+    }
+
+    async function loadNews() {
+      try {
+        const res = await fetch(API + "/news");
+        const items = await res.json();
+        const list = document.getElementById("newsList");
+        list.innerHTML = "";
+        items.forEach((item, idx) => {
+          const card = document.createElement("div");
+          card.className = "note-card";
+          card.innerHTML = `
+            <h4>📰 ${item.title}</h4>
+            <p>${item.desc}</p>
+            <div style="margin-top:12px;display:flex;gap:6px">
+              ${role === "admin" ? `
+                <button class="btn small danger" onclick="deleteNewsItem(${idx})">🗑️</button>
+              ` : ""}
+            </div>
+          `;
+          list.appendChild(card);
+        });
+      } catch (e) {
+        console.error("Error:", e);
+      }
+    }
+
+    async function loadGuides() {
+      try {
+        const res = await fetch(API + "/guides");
+        const items = await res.json();
+        const list = document.getElementById("guidesList");
+        list.innerHTML = "";
+        items.forEach((item, idx) => {
+          const card = document.createElement("div");
+          card.className = "note-card";
+          card.innerHTML = `
+            <h4>📚 ${item.title}</h4>
+            <p>${item.desc}</p>
+            <div style="margin-top:12px;display:flex;gap:6px">
+              ${role === "admin" ? `
+                <button class="btn small danger" onclick="deleteGuideItem(${idx})">🗑️</button>
+              ` : ""}
+            </div>
+          `;
+          list.appendChild(card);
+        });
+      } catch (e) {
+        console.error("Error:", e);
+      }
+    }
+
+    async function loadTests() {
+      try {
+        const res = await fetch(API + "/tests");
+        const tests = await res.json();
+        const list = document.getElementById("testsList");
+        list.innerHTML = "";
+        tests.forEach((test, idx) => {
+          const card = document.createElement("div");
+          card.className = "note-card";
+          card.innerHTML = `
+            <h4>🧪 ${test.title || "Тест"}</h4>
+            <p>❓ Вопросов: ${test.questions ? test.questions.length : 0}</p>
+            <button class="btn small" onclick="startTest(${idx})" style="margin-top:12px">Пройти тест</button>
+            ${role === "admin" ? `
+              <button class="btn small danger" onclick="deleteTest(${idx})" style="margin-left:4px">🗑️</button>
+            ` : ""}
+          `;
+          list.appendChild(card);
+        });
+      } catch (e) {
+        console.error("Error:", e);
+      }
+    }
+
+    function startTest(idx) {
+      fetch(API + "/tests").then(r => r.json()).then(tests => {
+        currentTestData = tests[idx];
+        currentQuestionIndex = 0;
+        testAnswers = [];
+        document.getElementById("testModal").classList.add("active");
+        displayTestQuestion();
+      });
+    }
+
+    function displayTestQuestion() {
+      if (!currentTestData) return;
+      const q = currentTestData.questions[currentQuestionIndex];
+      let html = `<div style="margin-bottom:20px">
+        <p style="font-size:12px;color:var(--muted)">❓ Вопрос ${currentQuestionIndex + 1} из ${currentTestData.questions.length}</p>
+        <h4>${q.q}</h4>`;
+
+      if (q.choices && q.choices.length > 0) {
+        if (q.type === "multiple") {
+          q.choices.forEach((choice, i) => {
+            html += `<label style="display:flex;gap:8px;margin-top:10px;cursor:pointer;padding:8px;border-radius:6px;background:var(--input-bg);border:1px solid var(--input-border);transition:all 0.2s">
+              <input type="checkbox" value="${choice}" onchange="updateAnswer(${i}, this.checked, true)" style="cursor:pointer">
+              ${choice}
+            </label>`;
+          });
+        } else {
+          q.choices.forEach((choice, i) => {
+            html += `<label style="display:flex;gap:8px;margin-top:10px;cursor:pointer;padding:8px;border-radius:6px;background:var(--input-bg);border:1px solid var(--input-border);transition:all 0.2s">
+              <input type="radio" name="answer" value="${choice}" onchange="updateAnswer(${i}, true, false)" style="cursor:pointer">
+              ${choice}
+            </label>`;
+          });
+        }
+      }
+      html += `</div>`;
+      document.getElementById("testContent").innerHTML = html;
+
+      document.getElementById("prevBtn").style.display = currentQuestionIndex > 0 ? "inline-block" : "none";
+      if (currentQuestionIndex < currentTestData.questions.length - 1) {
+        document.getElementById("nextBtn").style.display = "inline-block";
+        document.getElementById("submitBtn").style.display = "none";
+      } else {
+        document.getElementById("nextBtn").style.display = "none";
+        document.getElementById("submitBtn").style.display = "inline-block";
+      }
+    }
+
+    function updateAnswer(idx, value, isMultiple) {
+      if (!testAnswers[currentQuestionIndex]) testAnswers[currentQuestionIndex] = isMultiple ? [] : null;
+      if (isMultiple) {
+        if (value) {
+          if (!testAnswers[currentQuestionIndex].includes(idx)) testAnswers[currentQuestionIndex].push(idx);
+        } else {
+          testAnswers[currentQuestionIndex] = testAnswers[currentQuestionIndex].filter(x => x !== idx);
+        }
+      } else {
+        testAnswers[currentQuestionIndex] = idx;
+      }
+    }
+
+    function nextQuestion() {
+      if (currentQuestionIndex < currentTestData.questions.length - 1) {
+        currentQuestionIndex++;
+        displayTestQuestion();
+      }
+    }
+
+    function prevQuestion() {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        displayTestQuestion();
+      }
+    }
+
+    async function submitTest() {
+      const answers = testAnswers.map((ans, i) => {
+        const q = currentTestData.questions[i];
+        if (Array.isArray(ans)) {
+          return ans.map(idx => q.choices[idx]);
+        } else if (ans !== null && ans !== undefined) {
+          return q.choices[ans];
+        }
+        return null;
+      });
+
+      try {
+        const res = await fetch(API + "/tests/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ test_id: currentTestData.id, answers, user: current })
+        });
+        const result = await res.json();
+        document.getElementById("testContent").innerHTML = `
+          <div style="text-align:center;padding:40px">
+            <h3>✓ Результат: ${result.score}/${result.total}</h3>
+            <h2 style="color:var(--primary);font-size:48px">${result.percentage}%</h2>
+          </div>
+        `;
+        document.getElementById("prevBtn").style.display = "none";
+        document.getElementById("nextBtn").style.display = "none";
+        document.getElementById("submitBtn").style.display = "none";
+      } catch (e) {
+        console.error("Error:", e);
+      }
+    }
+
+    function closeTestModal() {
+      document.getElementById("testModal").classList.remove("active");
+    }
+
+    function openTestWizard() {
+      wizardQuestions = [];
+      document.getElementById("wizTestTitle").value = "";
+      document.getElementById("wizTestDesc").value = "";
+      document.getElementById("wizardStep1").style.display = "block";
+      document.getElementById("wizardStep2").style.display = "none";
+      document.getElementById("testWizardModal").classList.add("active");
+    }
+
+    function closeWizardModal() {
+      document.getElementById("testWizardModal").classList.remove("active");
+    }
+
+    function deleteNewsItem(idx) {
+      if (!confirm("Удалить?")) return;
+      fetch(API + "/admin/news/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index: idx, admin_login: current, admin_password: currentPass })
+      }).then(() => loadNews());
+    }
+
+    function deleteGuideItem(idx) {
+      if (!confirm("Удалить?")) return;
+      fetch(API + "/admin/guides/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ index: idx, admin_login: current, admin_password: currentPass })
+      }).then(() => loadGuides());
+    }
+
+    function deleteTest(idx) {
+      if (!confirm("Удалить тест?")) return;
+      fetch(API + "/tests").then(r => r.json()).then(tests => {
+        if (tests[idx] && tests[idx].id) {
+          fetch(API + "/admin/tests/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: tests[idx].id, admin_login: current, admin_password: currentPass })
+          }).then(() => loadTests());
+        }
+      });
+    }
+
+    // Event listeners
+    document.getElementById("loginBtn").onclick = login;
+    document.getElementById("logoutBtn").onclick = () => {
+      document.getElementById("loginBox").style.display = "block";
+      document.getElementById("mainBox").style.display = "none";
+      document.getElementById("materialForm").style.display = "none";
+      current = role = "";
+    };
+    document.getElementById("addNoteBtn").onclick = addNote;
+    document.getElementById("cancelMaterialBtn").onclick = () => {
+      document.getElementById("materialForm").style.display = "none";
+    };
+    document.getElementById("refreshBtn").onclick = loadNotes;
+    document.getElementById("addEventBtn").onclick = addCalendarEvent;
+    document.getElementById("addClassBtn").onclick = addAdminClass;
+
+    document.getElementById("saveNewsBtn").onclick = async () => {
+      const title = document.getElementById("newsTitle").value;
+      const desc = document.getElementById("newsDesc").value;
+      const classes = Array.from(document.getElementById("newsClasses").selectedOptions).map(o => o.value);
+      if (!title) { alert("Введите заголовок"); return; }
+      await fetch(API + "/news", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, desc, user: current, image: "", classes })
+      });
+      document.getElementById("newsTitle").value = "";
+      document.getElementById("newsDesc").value = "";
+      document.getElementById("newsClasses").value = "";
+      loadNews();
+      document.getElementById("newsForm").style.display = "none";
+    };
+
+    document.getElementById("saveGuideBtn").onclick = async () => {
+      const title = document.getElementById("guideTitle").value;
+      const desc = document.getElementById("guideDesc").value;
+      const classes = Array.from(document.getElementById("guideClasses").selectedOptions).map(o => o.value);
+      if (!title) { alert("Введите название"); return; }
+      await fetch(API + "/guides", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, desc, user: current, image: "", classes })
+      });
+      document.getElementById("guideTitle").value = "";
+      document.getElementById("guideDesc").value = "";
+      document.getElementById("guideClasses").value = "";
+      loadGuides();
+      document.getElementById("guidesForm").style.display = "none";
+    };
+
+    document.getElementById("saveUserBtn").onclick = async () => {
+      const login = document.getElementById("u_login").value;
+      const password = document.getElementById("u_pass").value;
+      const role_val = document.getElementById("u_role").value;
+      if (!login) { alert("Введите логин"); return; }
+      await fetch(API + "/admin/users/add_or_update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login, password, role: role_val, admin_login: current, admin_password: currentPass })
+      });
+      document.getElementById("u_login").value = "";
+      document.getElementById("u_pass").value = "";
+      loadUsersList();
+    };
+
+    document.getElementById("delUserBtn").onclick = async () => {
+      const login = document.getElementById("del_login").value;
+      if (!login) { alert("Введите логин"); return; }
+      await fetch(API + "/admin/users/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login, admin_login: current, admin_password: currentPass })
+      });
+      document.getElementById("del_login").value = "";
+      loadUsersList();
+    };
+
+    document.getElementById("themeBtn").onclick = () => {
+      const theme = document.getElementById("themeSel").value;
+      document.body.className = theme + "-theme";
+      localStorage.setItem("theme", theme);
+      fetch(API + "/admin/settings/theme", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme, admin_login: current, admin_password: currentPass })
+      });
+    };
+
+    document.getElementById("loadResultsBtn").onclick = async () => {
+      const res = await fetch(API + "/admin/results", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ admin_login: current, admin_password: currentPass })
+      });
+      const results = await res.json();
+      let html = "";
+      results.forEach(r => {
+        html += `<div style="padding:10px;border-bottom:1px solid var(--input-border);font-size:13px">
+          <strong>${r.user}</strong>: ${r.score}/${r.total} (${r.percentage}%)
+        </div>`;
+      });
+      document.getElementById("resultsList").innerHTML = html;
+    };
+
+    async function loadUsersList() {
+      const res = await fetch(API + "/admin/users/list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ admin_login: current, admin_password: currentPass })
+      });
+      const users = await res.json();
+      let html = "";
+      Object.keys(users).forEach(login => {
+        html += `<div style="padding:8px;font-size:13px;border-bottom:1px solid var(--input-border)">${login} <span class="badge badge-class">${users[login].role === "admin" ? "👨‍🏫" : "👨‍🎓"}</span></div>`;
+      });
+      document.getElementById("usersList").innerHTML = html;
+    }
+
+    // Test Wizard
+    document.getElementById("nextWizStep1").onclick = () => {
+      const title = document.getElementById("wizTestTitle").value;
+      if (!title) { alert("Введите название теста"); return; }
+      wizardTestClasses = Array.from(document.getElementById("wizTestClasses").selectedOptions).map(o => o.value);
+      document.getElementById("wizardStep1").style.display = "none";
+      document.getElementById("wizardStep2").style.display = "block";
+    };
+
+    document.getElementById("backWizStep2").onclick = () => {
+      document.getElementById("wizardStep2").style.display = "none";
+      document.getElementById("wizardStep1").style.display = "block";
+    };
+
+    document.getElementById("addWizQuestion").onclick = () => {
+      const q = document.getElementById("wizQuestion").value;
+      const type = document.getElementById("wizQType").value;
+      const choices = document.getElementById("wizChoices").value.split(",").map(s => s.trim());
+      const answers = document.getElementById("wizAnswers").value.split(",").map(s => s.trim());
+      if (!q || choices.length === 0 || answers.length === 0) { alert("Заполните все поля"); return; }
+      wizardQuestions.push({ q, type, choices, answers });
+      document.getElementById("wizQuestion").value = "";
+      document.getElementById("wizChoices").value = "";
+      document.getElementById("wizAnswers").value = "";
+      updateWizPreview();
+    };
+
+    function updateWizPreview() {
+      let html = "<h5>✓ Добавленные вопросы:</h5>";
+      wizardQuestions.forEach((q, i) => {
+        html += `<div style="padding:8px;background:var(--input-bg);border-radius:6px;margin-bottom:8px"><strong>${i+1}. ${q.q}</strong><br><small>${q.choices.length} вариантов</small></div>`;
+      });
+      document.getElementById("wizQuestionsPreview").innerHTML = html;
+    }
+
+    document.getElementById("finishWizTest").onclick = async () => {
+      if (wizardQuestions.length === 0) { alert("Добавьте хотя бы один вопрос"); return; }
+      const title = document.getElementById("wizTestTitle").value;
+      const desc = document.getElementById("wizTestDesc").value;
+      const test = {
+        id: Date.now(),
+        title,
+        description: desc,
+        classes: wizardTestClasses,
+        questions: wizardQuestions
+      };
+      await fetch(API + "/admin/tests/add_or_update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ test, admin_login: current, admin_password: currentPass })
+      });
+      loadTests();
+      closeWizardModal();
+    };
+
+    document.getElementById("nextBtn").onclick = nextQuestion;
+    document.getElementById("prevBtn").onclick = prevQuestion;
+    document.getElementById("submitBtn").onclick = submitTest;
+
+    // Initialize
+    const theme = localStorage.getItem("theme") || "light";
+    document.body.className = theme + "-theme";
+    document.getElementById("themeSel").value = theme;
+  </script>
+</body>
+</html>

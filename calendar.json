@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "title": "cfc",
+    "description": "cfc",
+    "date": "2026-12-12",
+    "time": "12:12",
+    "created_by": "admin",
+    "visibility": "class",
+    "visible_to": [
+      "1"
+    ]
+  },
+  {
+    "id": 2,
+    "title": "cfc",
+    "description": "cfc",
+    "date": "2026-06-14",
+    "time": "11:00",
+    "created_by": "admin",
+    "visibility": "class",
+    "visible_to": [
+      ""
+    ]
+  }
+]
